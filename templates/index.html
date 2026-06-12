@@ -1,0 +1,1368 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Nova AI Assistant Dashboard</title>
+  <!-- Modern Premium Typography -->
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #0A0A12;
+      --sidebar: #111122;
+      --card: rgba(22, 22, 38, 0.65);
+      --card-border: rgba(99, 102, 241, 0.15);
+      --accent: #6366F1;
+      --accent-glow: rgba(99, 102, 241, 0.35);
+      --accent-violet: #8B5CF6;
+      --accent-light: rgba(99, 102, 241, 0.08);
+      --text-primary: #F3F4F6;
+      --text-secondary: #9CA3AF;
+      --text-muted: #4B5563;
+      --bubble-user: linear-gradient(135deg, #6366F1, #8B5CF6);
+      --bubble-asst: rgba(30, 41, 59, 0.75);
+      --green: #10B981;
+      --red: #EF4444;
+      --orange: #F59E0B;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: 'Outfit', sans-serif;
+    }
+
+    body {
+      background-color: var(--bg);
+      color: var(--text-primary);
+      height: 100vh;
+      overflow: hidden;
+      display: flex;
+      background-image: radial-gradient(circle at 10% 20%, rgba(99, 102, 241, 0.1) 0%, transparent 40%),
+                        radial-gradient(circle at 90% 80%, rgba(139, 92, 246, 0.1) 0%, transparent 40%);
+    }
+
+    /* Sidebar Navigation */
+    .sidebar {
+      width: 260px;
+      background: var(--sidebar);
+      border-right: 1px solid var(--card-border);
+      display: flex;
+      flex-direction: column;
+      padding: 24px 16px;
+      z-index: 10;
+    }
+
+    .logo-container {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 32px;
+      padding-left: 8px;
+    }
+
+    .logo-icon {
+      background: var(--accent);
+      width: 38px;
+      height: 38px;
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+      box-shadow: 0 0 15px var(--accent-glow);
+    }
+
+    .logo-text {
+      font-size: 20px;
+      font-weight: 700;
+      background: linear-gradient(135deg, #FFF, var(--text-secondary));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .nav-label {
+      font-size: 10px;
+      font-weight: 700;
+      color: var(--text-muted);
+      letter-spacing: 1.5px;
+      margin-bottom: 12px;
+      padding-left: 12px;
+      text-transform: uppercase;
+    }
+
+    .nav-list {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .nav-item {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 12px 16px;
+      border-radius: 12px;
+      color: var(--text-secondary);
+      font-size: 15px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .nav-item:hover {
+      background: var(--accent-light);
+      color: var(--text-primary);
+    }
+
+    .nav-item.active {
+      background: rgba(99, 102, 241, 0.15);
+      color: #FFF;
+      border-left: 3px solid var(--accent);
+      box-shadow: inset 5px 0 15px rgba(99, 102, 241, 0.05);
+    }
+
+    /* Main Container */
+    .main-content {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      height: 100%;
+      position: relative;
+    }
+
+    /* Top Bar */
+    .topbar {
+      height: 70px;
+      border-bottom: 1px solid var(--card-border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 32px;
+      backdrop-filter: blur(10px);
+    }
+
+    .panel-title {
+      font-size: 20px;
+      font-weight: 700;
+      color: #FFF;
+    }
+
+    .status-container {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: rgba(22, 22, 38, 0.5);
+      padding: 6px 14px;
+      border-radius: 20px;
+      border: 1px solid var(--card-border);
+    }
+
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--green);
+      box-shadow: 0 0 8px var(--green);
+      transition: all 0.3s ease;
+    }
+
+    .status-dot.listening {
+      background: var(--red);
+      box-shadow: 0 0 10px var(--red);
+    }
+
+    .status-dot.processing {
+      background: var(--orange);
+      box-shadow: 0 0 10px var(--orange);
+    }
+
+    .status-text {
+      font-size: 13px;
+      color: var(--text-secondary);
+      font-weight: 500;
+    }
+
+    /* Panels Container */
+    .panels {
+      flex: 1;
+      position: relative;
+      overflow-y: auto;
+      padding: 32px;
+    }
+
+    .panel {
+      display: none;
+      width: 100%;
+      height: 100%;
+      animation: fadeIn 0.3s ease-in-out forwards;
+    }
+
+    .panel.active {
+      display: block;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(8px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* Glassmorphism Cards */
+    .card {
+      background: var(--card);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border: 1px solid var(--card-border);
+      border-radius: 16px;
+      padding: 20px;
+      margin-bottom: 20px;
+      box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.2);
+    }
+
+    .card-title {
+      font-size: 16px;
+      font-weight: 700;
+      margin-bottom: 16px;
+      color: #FFF;
+    }
+
+    /* Chat Panel Styling */
+    .chat-container {
+      display: flex;
+      flex-direction: column;
+      height: calc(100vh - 210px);
+      overflow-y: auto;
+      padding-bottom: 20px;
+      scroll-behavior: smooth;
+    }
+
+    .chat-bubble {
+      max-width: 70%;
+      padding: 12px 18px;
+      border-radius: 16px;
+      margin-bottom: 12px;
+      font-size: 15px;
+      line-height: 1.5;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .chat-bubble.user {
+      align-self: flex-end;
+      background: var(--bubble-user);
+      color: #FFF;
+      border-bottom-right-radius: 4px;
+      box-shadow: 0 4px 15px rgba(99, 102, 241, 0.25);
+    }
+
+    .chat-bubble.assistant {
+      align-self: flex-start;
+      background: var(--bubble-asst);
+      color: var(--text-primary);
+      border: 1px solid var(--card-border);
+      border-bottom-left-radius: 4px;
+    }
+
+    .chat-time {
+      font-size: 10px;
+      color: var(--text-secondary);
+      align-self: flex-end;
+      margin-top: 2px;
+    }
+
+    .user .chat-time {
+      color: rgba(255, 255, 255, 0.7);
+    }
+
+    .bubble-image {
+      max-width: 100%;
+      border-radius: 10px;
+      border: 1px solid var(--card-border);
+      margin-top: 4px;
+    }
+
+    /* Waveform visualizer & Bottom Input Panel */
+    .bottom-bar {
+      border-top: 1px solid var(--card-border);
+      background: var(--sidebar);
+      padding: 16px 32px 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .visualizer-container {
+      width: 100%;
+      height: 35px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .visualizer-canvas {
+      width: 100%;
+      height: 100%;
+    }
+
+    .input-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .mic-btn {
+      width: 46px;
+      height: 46px;
+      border-radius: 50%;
+      background: var(--accent-light);
+      border: 1px solid var(--card-border);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--accent);
+      font-size: 20px;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      box-shadow: 0 0 10px rgba(99, 102, 241, 0);
+    }
+
+    .mic-btn:hover {
+      background: var(--accent);
+      color: #FFF;
+      box-shadow: 0 0 15px var(--accent-glow);
+    }
+
+    .mic-btn.active {
+      background: var(--red);
+      color: #FFF;
+      border-color: var(--red);
+      box-shadow: 0 0 15px rgba(239, 68, 68, 0.4);
+      animation: pulse 1.5s infinite;
+    }
+
+    @keyframes pulse {
+      0% { transform: scale(1); }
+      50% { transform: scale(1.08); }
+      100% { transform: scale(1); }
+    }
+
+    .text-input-container {
+      flex: 1;
+      position: relative;
+    }
+
+    .text-input {
+      width: 100%;
+      background: var(--bg);
+      border: 1px solid var(--card-border);
+      padding: 12px 18px;
+      border-radius: 24px;
+      color: var(--text-primary);
+      font-size: 15px;
+      outline: none;
+      transition: all 0.3s ease;
+    }
+
+    .text-input:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 10px rgba(99, 102, 241, 0.15);
+    }
+
+    .send-btn {
+      background: var(--accent);
+      border: none;
+      color: #FFF;
+      padding: 12px 24px;
+      border-radius: 24px;
+      font-size: 14px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      box-shadow: 0 0 10px rgba(99, 102, 241, 0.1);
+    }
+
+    .send-btn:hover {
+      background: var(--accent-violet);
+      box-shadow: 0 0 15px rgba(139, 92, 246, 0.3);
+    }
+
+    /* System Diagnostics (radial bars) */
+    .dashboard-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 20px;
+    }
+
+    .radial-widget {
+      display: flex;
+      align-items: center;
+      gap: 20px;
+    }
+
+    .circle-progress-svg {
+      width: 90px;
+      height: 90px;
+      transform: rotate(-90deg);
+    }
+
+    .circle-bg {
+      fill: none;
+      stroke: var(--card-border);
+      stroke-width: 8;
+    }
+
+    .circle-fill {
+      fill: none;
+      stroke: var(--accent);
+      stroke-width: 8;
+      stroke-dasharray: 251.2; /* 2 * PI * r (r=40) */
+      stroke-dashoffset: 251.2;
+      stroke-linecap: round;
+      transition: stroke-dashoffset 0.6s ease-in-out;
+    }
+
+    .memory-fill {
+      stroke: var(--accent-violet);
+    }
+
+    .radial-label {
+      font-size: 22px;
+      font-weight: 700;
+      color: #FFF;
+    }
+
+    .stat-meta {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .stat-label-title {
+      font-size: 14px;
+      color: var(--text-secondary);
+      font-weight: 500;
+    }
+
+    .stat-value {
+      font-size: 15px;
+      color: #FFF;
+      font-weight: 700;
+    }
+
+    /* Diagnostics Table-like Lists */
+    .diagnostics-list {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .diagnostic-row {
+      display: flex;
+      justify-content: space-between;
+      padding: 10px 0;
+      border-bottom: 1px solid var(--card-border);
+      font-size: 14px;
+    }
+
+    .diagnostic-row:last-child {
+      border-bottom: none;
+    }
+
+    .diagnostic-title {
+      color: var(--text-secondary);
+    }
+
+    .diagnostic-val {
+      color: #FFF;
+      font-weight: 700;
+    }
+
+    /* Reminders Form & List */
+    .reminder-form {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      margin-bottom: 24px;
+    }
+
+    .form-group {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .form-label {
+      font-size: 13px;
+      color: var(--text-secondary);
+      font-weight: 500;
+    }
+
+    .form-input {
+      background: var(--bg);
+      border: 1px solid var(--card-border);
+      padding: 10px 14px;
+      border-radius: 10px;
+      color: var(--text-primary);
+      outline: none;
+      font-size: 14px;
+    }
+
+    .form-input:focus {
+      border-color: var(--accent);
+    }
+
+    .reminders-list {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .reminder-card {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: rgba(22, 22, 38, 0.4);
+      border: 1px solid var(--card-border);
+      padding: 12px 16px;
+      border-radius: 12px;
+    }
+
+    .reminder-info {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    .reminder-msg {
+      font-size: 14px;
+      font-weight: 700;
+      color: #FFF;
+    }
+
+    .reminder-time {
+      font-size: 12px;
+      color: var(--text-secondary);
+    }
+
+    .del-btn {
+      background: none;
+      border: none;
+      color: var(--text-muted);
+      cursor: pointer;
+      font-size: 16px;
+      transition: color 0.3s ease;
+    }
+
+    .del-btn:hover {
+      color: var(--red);
+    }
+
+    /* Weather Widget */
+    .weather-widget {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .weather-temp {
+      font-size: 42px;
+      font-weight: 300;
+      color: #FFF;
+    }
+
+    /* News list */
+    .news-category-bar {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 20px;
+      overflow-x: auto;
+      padding-bottom: 8px;
+    }
+
+    .news-cat-tab {
+      background: rgba(22, 22, 38, 0.5);
+      border: 1px solid var(--card-border);
+      padding: 6px 14px;
+      border-radius: 16px;
+      font-size: 13px;
+      color: var(--text-secondary);
+      cursor: pointer;
+      white-space: nowrap;
+      transition: all 0.3s ease;
+    }
+
+    .news-cat-tab.active {
+      background: var(--accent);
+      color: #FFF;
+      border-color: var(--accent);
+    }
+
+    .news-item {
+      padding: 12px 0;
+      border-bottom: 1px solid var(--card-border);
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .news-item:last-child {
+      border-bottom: none;
+    }
+
+    .news-tag {
+      font-size: 10px;
+      font-weight: 700;
+      color: var(--accent-text);
+      text-transform: uppercase;
+    }
+
+    .news-item-title {
+      font-size: 14px;
+      font-weight: 500;
+      color: #FFF;
+      line-height: 1.4;
+    }
+
+    .news-item-src {
+      font-size: 11px;
+      color: var(--text-secondary);
+    }
+
+    /* Action buttons for vision */
+    .vision-row {
+      display: flex;
+      gap: 10px;
+      margin-top: 10px;
+    }
+
+    .action-btn {
+      background: rgba(99, 102, 241, 0.1);
+      border: 1px solid var(--card-border);
+      color: var(--accent-text);
+      padding: 8px 14px;
+      border-radius: 10px;
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      transition: all 0.3s ease;
+    }
+
+    .action-btn:hover {
+      background: var(--accent);
+      color: #FFF;
+      border-color: var(--accent);
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Navigation Sidebar -->
+  <nav class="sidebar">
+    <div class="logo-container">
+      <div class="logo-icon">🎤</div>
+      <div class="logo-text">Nova AI</div>
+    </div>
+    
+    <div class="nav-label">Main menu</div>
+    <ul class="nav-list">
+      <li class="nav-item active" onclick="switchTab('chat', this)">💬 Chat</li>
+      <li class="nav-item" onclick="switchTab('reminders', this)">⏰ Reminders</li>
+      <li class="nav-item" onclick="switchTab('news', this)">📰 News</li>
+      <li class="nav-item" onclick="switchTab('dashboard', this)">📊 System Stats</li>
+      <li class="nav-item" onclick="switchTab('settings', this)">⚙️ Settings</li>
+    </ul>
+  </nav>
+
+  <!-- Main Area -->
+  <main class="main-content">
+    
+    <!-- Header Top Bar -->
+    <header class="topbar">
+      <h1 class="panel-title" id="panel-title-text">Chat Assistant</h1>
+      <div class="status-container">
+        <div class="status-dot" id="status-indicator"></div>
+        <div class="status-text" id="status-label">Ready</div>
+      </div>
+    </header>
+
+    <!-- Panels -->
+    <section class="panels">
+      
+      <!-- Chat Panel -->
+      <div class="panel active" id="panel-chat">
+        <div class="chat-container" id="chat-scroller">
+          <!-- Welcome Bubble -->
+          <div class="chat-bubble assistant">
+            <div>
+              Hello! I'm your Nova AI Assistant. How can I help you today?
+              <br><br>
+              Try asking:<br>
+              • "What's the weather in Paris?"<br>
+              • "Read me technology news"<br>
+              • "Take a screenshot" (I'll analyze your screen using visual intelligence!)<br>
+              • "What time is it?"
+            </div>
+            <div class="chat-time" id="welcome-time">12:00 PM</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Reminders Panel -->
+      <div class="panel" id="panel-reminders">
+        <div class="card">
+          <h2 class="card-title">Add New Reminder</h2>
+          <div class="reminder-form">
+            <div class="form-group">
+              <label class="form-label">Reminder Message</label>
+              <input type="text" class="form-input" id="rem-msg" placeholder="e.g. Call mom or Take medication">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Time (HH:MM / Optional)</label>
+              <input type="text" class="form-input" id="rem-time" placeholder="e.g. 15:30 or 20:00">
+            </div>
+            <button class="send-btn" style="margin-top: 8px;" onclick="addReminder()">＋ Add Reminder</button>
+          </div>
+        </div>
+        <div class="card">
+          <h2 class="card-title">Active Reminders</h2>
+          <div class="reminders-list" id="reminders-container">
+            <!-- Loaded dynamically -->
+          </div>
+        </div>
+      </div>
+
+      <!-- News Panel -->
+      <div class="panel" id="panel-news">
+        <div class="news-category-bar">
+          <div class="news-cat-tab active" onclick="loadNews('general', this)">General</div>
+          <div class="news-cat-tab" onclick="loadNews('technology', this)">Technology</div>
+          <div class="news-cat-tab" onclick="loadNews('sports', this)">Sports</div>
+          <div class="news-cat-tab" onclick="loadNews('business', this)">Business</div>
+          <div class="news-cat-tab" onclick="loadNews('science', this)">Science</div>
+        </div>
+        <div class="card">
+          <h2 class="card-title">Latest Headlines</h2>
+          <div id="news-container">
+            <!-- Loaded dynamically -->
+          </div>
+        </div>
+      </div>
+
+      <!-- Diagnostics Panel -->
+      <div class="panel" id="panel-dashboard">
+        <div class="dashboard-grid">
+          <!-- CPU Card -->
+          <div class="card radial-widget">
+            <svg class="circle-progress-svg">
+              <circle class="circle-bg" cx="45" cy="45" r="40"></circle>
+              <circle class="circle-fill" id="cpu-ring" cx="45" cy="45" r="40"></circle>
+            </svg>
+            <div class="stat-meta">
+              <span class="stat-label-title">CPU Load</span>
+              <span class="radial-label" id="cpu-text">0%</span>
+            </div>
+          </div>
+          <!-- RAM Card -->
+          <div class="card radial-widget">
+            <svg class="circle-progress-svg">
+              <circle class="circle-bg" cx="45" cy="45" r="40"></circle>
+              <circle class="circle-fill memory-fill" id="ram-ring" cx="45" cy="45" r="40"></circle>
+            </svg>
+            <div class="stat-meta">
+              <span class="stat-label-title">RAM Usage</span>
+              <span class="radial-label" id="ram-text">0%</span>
+              <span class="stat-value" id="ram-gb">0.0/0.0 GB</span>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Detailed System Info -->
+        <div class="card">
+          <h2 class="card-title">System Metrics</h2>
+          <div class="diagnostics-list">
+            <div class="diagnostic-row">
+              <span class="diagnostic-title">🔋 Battery Status</span>
+              <span class="diagnostic-val" id="diag-battery">Loading...</span>
+            </div>
+            <div class="diagnostic-row">
+              <span class="diagnostic-title">💾 Disk Space (/)</span>
+              <span class="diagnostic-val" id="diag-disk">Loading...</span>
+            </div>
+            <div class="diagnostic-row">
+              <span class="diagnostic-title">🚀 Active Threads</span>
+              <span class="diagnostic-val" id="diag-threads">Loading...</span>
+            </div>
+            <div class="diagnostic-row">
+              <span class="diagnostic-title">⏰ System Time</span>
+              <span class="diagnostic-val" id="diag-time">Loading...</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Settings Panel -->
+      <div class="panel" id="panel-settings">
+        <div class="card">
+          <h2 class="card-title">General Preferences</h2>
+          <div class="diagnostics-list">
+            <div class="diagnostic-row">
+              <span class="diagnostic-title">Voice Output Speech</span>
+              <span class="diagnostic-val">Enabled (Browser Synthesis)</span>
+            </div>
+            <div class="diagnostic-row">
+              <span class="diagnostic-title">Google Gemini Integration</span>
+              <span class="diagnostic-val">Active (Model: gemini-1.5-flash)</span>
+            </div>
+            <div class="diagnostic-row">
+              <span class="diagnostic-title">Screen Diagnostics API</span>
+              <span class="diagnostic-val">Active (multimodal Pillow)</span>
+            </div>
+          </div>
+        </div>
+        <div class="card">
+          <h2 class="card-title">API Key Settings</h2>
+          <p style="font-size: 14px; color: var(--text-secondary); line-height: 1.5; margin-bottom: 12px;">
+            To modify your API keys, edit the <code>.env</code> file located in the root of your project directory:
+          </p>
+          <div class="diagnostics-list">
+            <div class="diagnostic-row">
+              <span class="diagnostic-title">OpenWeatherMap</span>
+              <span class="diagnostic-val">→ set WEATHER_API_KEY in .env</span>
+            </div>
+            <div class="diagnostic-row">
+              <span class="diagnostic-title">NewsAPI</span>
+              <span class="diagnostic-val">→ set NEWS_API_KEY in .env</span>
+            </div>
+            <div class="diagnostic-row">
+              <span class="diagnostic-title">Google Gemini (AI Studio)</span>
+              <span class="diagnostic-val">→ set GEMINI_API_KEY in .env</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </section>
+
+    <!-- Bottom Input Controls -->
+    <footer class="bottom-bar">
+      <!-- Waveform Canvas -->
+      <div class="visualizer-container">
+        <canvas class="visualizer-canvas" id="visual-canvas"></canvas>
+      </div>
+
+      <div class="input-row">
+        <!-- Mic button -->
+        <button class="mic-btn" id="mic-trigger" onclick="toggleSpeech()" title="Tap to speak">🎤</button>
+        <!-- Text Input -->
+        <div class="text-input-container">
+          <input type="text" class="text-input" id="message-field" placeholder="Type a message or click mic to speak..." onkeydown="handleEnter(event)">
+        </div>
+        <!-- Send Button -->
+        <button class="send-btn" onclick="sendMessage()">Send →</button>
+      </div>
+      
+      <!-- Elite Vision Shortcuts -->
+      <div class="vision-row">
+        <button class="action-btn" onclick="takeScreenshot()">📸 Take Desktop Screenshot & Analyze</button>
+      </div>
+    </footer>
+
+  </main>
+
+  <script>
+    let activeTabName = 'chat';
+    let isSpeechActive = false;
+    let visualState = 'ready'; // ready, listening, processing, speaking
+    let phase = 0.0;
+    
+    // Waveform Canvas Setup
+    const canvas = document.getElementById('visual-canvas');
+    const ctx = canvas.getContext('2d');
+    
+    // Web Speech API
+    let SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    let recognition = null;
+    if (SpeechRecognition) {
+      recognition = new SpeechRecognition();
+      recognition.continuous = false;
+      recognition.interimResults = false;
+      recognition.lang = 'en-US';
+      
+      recognition.onstart = () => {
+        setUIState('listening', 'Listening...');
+      };
+      
+      recognition.onend = () => {
+        if (isSpeechActive) {
+          isSpeechActive = false;
+          setUIState('ready', 'Ready');
+        }
+      };
+      
+      recognition.onresult = (event) => {
+        const text = event.results[0][0].transcript;
+        addBubble(text, 'user');
+        processUserCommand(text);
+      };
+      
+      recognition.onerror = (event) => {
+        console.error('Speech recognition error:', event.error);
+        setUIState('ready', 'Ready');
+        isSpeechActive = false;
+      };
+    }
+
+    // Set Welcome bubble time
+    document.getElementById('welcome-time').innerText = getFormattedTime();
+
+    // Tab switcher
+    function switchTab(name, element) {
+      activeTabName = name;
+      
+      // Update sidebar nav style
+      document.querySelectorAll('.nav-item').forEach(item => item.classList.remove('active'));
+      element.classList.add('active');
+      
+      // Toggle panels
+      document.querySelectorAll('.panel').forEach(panel => panel.classList.remove('active'));
+      document.getElementById(`panel-${name}`).classList.add('active');
+      
+      // Update header title
+      const titles = {
+        chat: 'Chat Assistant',
+        reminders: 'Reminders & Tasks',
+        news: 'Latest News Feed',
+        dashboard: 'System Diagnostics',
+        settings: 'Settings'
+      };
+      document.getElementById('panel-title-text').innerText = titles[name];
+      
+      if (name === 'dashboard') {
+        pollSystemStats();
+      } else if (name === 'reminders') {
+        loadReminders();
+      }
+    }
+
+    // Handle User Input sending
+    function sendMessage() {
+      const field = document.getElementById('message-field');
+      const text = field.value.trim();
+      if (!text) return;
+      
+      field.value = '';
+      addBubble(text, 'user');
+      processUserCommand(text);
+    }
+
+    function handleEnter(event) {
+      if (event.key === 'Enter') {
+        sendMessage();
+      }
+    }
+
+    function getFormattedTime() {
+      const date = new Date();
+      let hours = date.getHours();
+      let minutes = date.getMinutes();
+      const ampm = hours >= 12 ? 'PM' : 'AM';
+      hours = hours % 12;
+      hours = hours ? hours : 12; // 0 should be 12
+      minutes = minutes < 10 ? '0'+minutes : minutes;
+      return `${hours}:${minutes} ${ampm}`;
+    }
+
+    // Append a chat bubble
+    function addBubble(text, role, imageUrl = null) {
+      const scroller = document.getElementById('chat-scroller');
+      const bubble = document.createElement('div');
+      bubble.className = `chat-bubble ${role}`;
+      
+      const content = document.createElement('div');
+      
+      // Apply Markdown-like formatting (bold)
+      let formattedText = text.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+      formattedText = formattedText.replace(/\n/g, '<br>');
+      content.innerHTML = formattedText;
+      bubble.appendChild(content);
+
+      if (imageUrl) {
+        const img = document.createElement('img');
+        img.src = imageUrl;
+        img.className = 'bubble-image';
+        bubble.appendChild(img);
+      }
+      
+      const time = document.createElement('div');
+      time.className = 'chat-time';
+      time.innerText = getFormattedTime();
+      bubble.appendChild(time);
+      
+      scroller.appendChild(bubble);
+      scroller.scrollTop = scroller.scrollHeight;
+    }
+
+    // Set status indicator
+    function setUIState(state, labelText) {
+      visualState = state;
+      const dot = document.getElementById('status-indicator');
+      const label = document.getElementById('status-label');
+      const mic = document.getElementById('mic-trigger');
+      
+      label.innerText = labelText;
+      
+      dot.className = 'status-dot';
+      mic.className = 'mic-btn';
+      
+      if (state === 'listening') {
+        dot.classList.add('listening');
+        mic.classList.add('active');
+      } else if (state === 'processing') {
+        dot.classList.add('processing');
+      }
+    }
+
+    // Toggle browser microphone speech
+    function toggleSpeech() {
+      if (!recognition) {
+        alert('Web Speech API is not supported in this browser. Please try Google Chrome or Safari.');
+        return;
+      }
+      
+      if (isSpeechActive) {
+        recognition.stop();
+        setUIState('ready', 'Ready');
+        isSpeechActive = false;
+      } else {
+        window.speechSynthesis.cancel(); // Stop any reading speaking
+        isSpeechActive = true;
+        recognition.start();
+      }
+    }
+
+    // Process user input
+    async function processUserCommand(text) {
+      // Intercept local screenshot commands for elite vision
+      const lowerText = text.toLowerCase();
+      if (lowerText.includes('screenshot') || lowerText.includes('screen shot') || lowerText.includes('capture')) {
+        takeScreenshot();
+        return;
+      }
+      
+      setUIState('processing', 'Thinking...');
+      
+      try {
+        const resp = await fetch('/api/chat', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ text })
+        });
+        const data = await resp.json();
+        
+        setUIState('ready', 'Ready');
+        addBubble(data.display, 'assistant');
+        speakResponse(data.spoken);
+      } catch (err) {
+        setUIState('ready', 'Ready');
+        addBubble('Sorry, I failed to reach the assistant backend.', 'assistant');
+        speakResponse('Failed to reach the assistant backend.');
+      }
+    }
+
+    // Screenshot Vision
+    async function takeScreenshot() {
+      setUIState('processing', 'Capturing Desktop...');
+      
+      try {
+        const resp = await fetch('/api/screenshot', {
+          method: 'POST'
+        });
+        const data = await resp.json();
+        
+        setUIState('ready', 'Ready');
+        if (data.error) {
+          addBubble(`Screenshot failed: ${data.error}`, 'assistant');
+          speakResponse('Screen capture failed.');
+        } else {
+          addBubble(data.description, 'assistant', data.image);
+          speakResponse(data.description);
+        }
+      } catch (err) {
+        setUIState('ready', 'Ready');
+        addBubble('Failed to communicate with screen diagnostics API.', 'assistant');
+        speakResponse('Failed to communicate with screen diagnostics API.');
+      }
+    }
+
+    // Synthesize spoken text
+    function speakResponse(spokenText) {
+      if (!window.speechSynthesis) return;
+      
+      setUIState('speaking', 'Speaking...');
+      
+      // Clean spoken output
+      let clean = spokenText.replace(/[🌤📰⏰💬🎤☀️🌧🌩**]/g, '');
+      const utterance = new SpeechSynthesisUtterance(clean);
+      
+      // Pick a high-quality Siri/Google English voice if available
+      const voices = window.speechSynthesis.getVoices();
+      const siriVoice = voices.find(v => v.name.includes('Siri') || v.name.includes('Google') || v.name.includes('Samantha'));
+      if (siriVoice) utterance.voice = siriVoice;
+      
+      utterance.onend = () => {
+        setUIState('ready', 'Ready');
+      };
+      
+      utterance.onerror = () => {
+        setUIState('ready', 'Ready');
+      };
+      
+      window.speechSynthesis.speak(utterance);
+    }
+    
+    // Trigger voice list loading (needed for Chrome)
+    if (window.speechSynthesis) {
+      window.speechSynthesis.getVoices();
+    }
+
+    // Waveform Animation Loop
+    function animateWaveform() {
+      const w = canvas.width = canvas.parentElement.clientWidth;
+      const h = canvas.height = canvas.parentElement.clientHeight;
+      const midY = h / 2;
+      
+      ctx.clearRect(0, 0, w, h);
+      phase += 0.12;
+      
+      if (visualState === 'listening') {
+        // Siri-like colored lines
+        const waves = [
+          { color: 'rgba(99, 102, 241, 0.7)', amp: h * 0.38, freq: 0.025, speed: 1 },
+          { color: 'rgba(139, 92, 246, 0.6)', amp: h * 0.28, freq: 0.04, speed: -1.2 },
+          { color: 'rgba(167, 139, 250, 0.4)', amp: h * 0.18, freq: 0.055, speed: 0.7 }
+        ];
+        
+        waves.forEach(wave => {
+          ctx.beginPath();
+          ctx.strokeStyle = wave.color;
+          ctx.lineWidth = 2;
+          
+          for (let x = 0; x < w; x += 10) {
+            // Apply gaussian envelope so lines shrink at edges
+            const envelope = Math.pow(1 - Math.abs((x - w/2) / (w/2)), 2);
+            const y = midY + wave.amp * envelope * Math.sin(x * wave.freq + phase * wave.speed);
+            if (x === 0) ctx.moveTo(x, y);
+            else ctx.lineTo(x, y);
+          }
+          ctx.stroke();
+        });
+      } else if (visualState === 'processing') {
+        // Glowing processing ring in the middle
+        const centerX = w / 2;
+        const size = 6 + 3 * Math.sin(phase * 2.0);
+        ctx.beginPath();
+        ctx.arc(centerX, midY, size, 0, Math.PI * 2);
+        ctx.fillStyle = '#6366F1';
+        ctx.shadowBlur = 15;
+        ctx.shadowColor = '#6366F1';
+        ctx.fill();
+        ctx.shadowBlur = 0; // Reset shadow
+        
+        // Side glowing dots
+        for (let i of [-1, 1]) {
+          const px = centerX + i * 25;
+          const psize = 3 + 1.5 * Math.sin(phase * 2.0 + i * 1.5);
+          ctx.beginPath();
+          ctx.arc(px, midY, psize, 0, Math.PI * 2);
+          ctx.fillStyle = 'rgba(99, 102, 241, 0.4)';
+          ctx.fill();
+        }
+      } else if (visualState === 'speaking') {
+        // Vertical frequency bars
+        const barWidth = 4;
+        const gap = 6;
+        const numBars = Math.floor(w / (barWidth + gap)) - 2;
+        const startX = (w - (numBars * (barWidth + gap))) / 2;
+        
+        ctx.fillStyle = '#6366F1';
+        for (let i = 0; i < numBars; i++) {
+          const x = startX + i * (barWidth + gap);
+          const height = (h * 0.4) * (0.2 + 0.8 * Math.abs(Math.sin(phase + i * 0.25)));
+          ctx.fillRect(x, midY - height, barWidth, height * 2);
+        }
+      } else {
+        // Idle thin wavy line
+        ctx.beginPath();
+        ctx.strokeStyle = 'rgba(99, 102, 241, 0.2)';
+        ctx.lineWidth = 1;
+        
+        for (let x = 0; x < w; x += 15) {
+          const y = midY + 1.5 * Math.sin(x * 0.05 + phase * 0.4);
+          if (x === 0) ctx.moveTo(x, y);
+          else ctx.lineTo(x, y);
+        }
+        ctx.stroke();
+      }
+      
+      requestAnimationFrame(animateWaveform);
+    }
+    
+    // Start drawing waveform
+    requestAnimationFrame(animateWaveform);
+
+    // Diagnostics Polling loop
+    async function pollSystemStats() {
+      if (activeTabName !== 'dashboard') return;
+      
+      try {
+        const resp = await fetch('/api/stats');
+        const data = await resp.json();
+        
+        // Update circular gauges
+        updateCircleGauge('cpu-ring', data.cpu);
+        document.getElementById('cpu-text').innerText = `${Math.round(data.cpu)}%`;
+        
+        updateCircleGauge('ram-ring', data.ram);
+        document.getElementById('ram-text').innerText = `${Math.round(data.ram)}%`;
+        document.getElementById('ram-gb').innerText = data.ram_gb;
+        
+        // Update table metrics
+        document.getElementById('diag-battery').innerText = data.battery;
+        document.getElementById('diag-disk').innerText = `${data.disk}% (${data.disk_gb})`;
+        document.getElementById('diag-threads').innerText = data.threads;
+        document.getElementById('diag-time').innerText = data.time;
+      } catch (err) {
+        console.error('Failed to poll stats:', err);
+      }
+      
+      setTimeout(pollSystemStats, 1000);
+    }
+
+    function updateCircleGauge(ringId, percent) {
+      const circle = document.getElementById(ringId);
+      const radius = circle.r.baseVal.value;
+      const circumference = 2 * Math.PI * radius;
+      
+      const offset = circumference - (percent / 100) * circumference;
+      circle.style.strokeDashoffset = offset;
+    }
+
+    // Reminders Management
+    async function loadReminders() {
+      if (activeTabName !== 'reminders') return;
+      
+      const container = document.getElementById('reminders-container');
+      container.innerHTML = '<div style="font-size:14px;color:var(--text-secondary);">Loading...</div>';
+      
+      try {
+        const resp = await fetch('/api/reminders');
+        const list = await resp.json();
+        
+        container.innerHTML = '';
+        if (list.length === 0) {
+          container.innerHTML = '<div style="font-size:14px;color:var(--text-secondary);text-align:center;padding:12px;">No active reminders.</div>';
+          return;
+        }
+        
+        list.forEach(r => {
+          const item = document.createElement('div');
+          item.className = 'reminder-card';
+          
+          item.innerHTML = `
+            <div class="reminder-info">
+              <span class="reminder-msg">${r.message}</span>
+              <span class="reminder-time">⏰ ${r.time_str || 'No specific time'}</span>
+            </div>
+            <button class="del-btn" onclick="deleteReminder('${r.id}')">✕</button>
+          `;
+          container.appendChild(item);
+        });
+      } catch (err) {
+        container.innerHTML = '<div style="font-size:14px;color:var(--red);">Failed to load reminders.</div>';
+      }
+    }
+
+    async function addReminder() {
+      const msgField = document.getElementById('rem-msg');
+      const timeField = document.getElementById('rem-time');
+      const message = msgField.value.trim();
+      const time_str = timeField.value.trim();
+      
+      if (!message) {
+        alert('Please enter a message.');
+        return;
+      }
+      
+      try {
+        await fetch('/api/reminders', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ message, time_str })
+        });
+        
+        msgField.value = '';
+        timeField.value = '';
+        loadReminders();
+      } catch (err) {
+        alert('Failed to add reminder.');
+      }
+    }
+
+    async function deleteReminder(id) {
+      try {
+        await fetch(`/api/reminders?id=${id}`, {
+          method: 'DELETE'
+        });
+        loadReminders();
+      } catch (err) {
+        alert('Failed to delete reminder.');
+      }
+    }
+
+    // News headlines loading
+    let currentNewsCategory = 'general';
+    async function loadNews(category, tabElement) {
+      currentNewsCategory = category;
+      
+      // Update tab styles
+      if (tabElement) {
+        document.querySelectorAll('.news-cat-tab').forEach(tab => tab.classList.remove('active'));
+        tabElement.classList.add('active');
+      }
+      
+      const container = document.getElementById('news-container');
+      container.innerHTML = '<div style="font-size:14px;color:var(--text-secondary);padding:12px;">Loading headlines...</div>';
+      
+      try {
+        const resp = await fetch(`/api/news?category=${category}`);
+        const articles = await resp.json();
+        
+        container.innerHTML = '';
+        if (articles.length === 0) {
+          container.innerHTML = '<div style="font-size:14px;color:var(--text-secondary);padding:12px;text-align:center;">No articles available.</div>';
+          return;
+        }
+        
+        articles.forEach(a => {
+          const item = document.createElement('div');
+          item.className = 'news-item';
+          item.innerHTML = `
+            <span class="news-tag">${category}</span>
+            <span class="news-item-title">${a.title}</span>
+            <span class="news-item-src">${a.source}</span>
+          `;
+          container.appendChild(item);
+        });
+      } catch (err) {
+        container.innerHTML = '<div style="font-size:14px;color:var(--red);padding:12px;">Failed to load headlines.</div>';
+      }
+    }
+  </script>
+</body>
+</html>

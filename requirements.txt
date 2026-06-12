@@ -1,0 +1,34 @@
+# Voice Assistant — Python dependencies
+# Install with: pip install -r requirements.txt
+
+# Speech recognition (uses Google Web Speech API free tier)
+SpeechRecognition==3.10.4
+pyaudio==0.2.14         # Microphone access (see install note below)
+
+# Text-to-speech (offline, no API key needed)
+pyttsx3==2.90
+
+# HTTP client for weather, news, and AI APIs
+requests==2.32.3
+
+# Image manipulation (for screenshot vision)
+Pillow==12.2.0
+
+# System diagnostics metrics
+psutil==7.2.2
+
+# Flask web backend
+Flask==3.1.3
+
+# GUI (bundled with Python — no extra install needed)
+# tkinter
+
+# ──────────────────────────────────────────────────────────────────────────
+# PyAudio install notes:
+#   macOS  : brew install portaudio && pip install pyaudio
+#   Ubuntu : sudo apt install portaudio19-dev && pip install pyaudio
+#   Windows: pip install pyaudio  (pre-built wheel available)
+#
+# If pyaudio fails, try:
+#   pip install pipwin && pipwin install pyaudio   (Windows only)
+# ──────────────────────────────────────────────────────────────────────────
