@@ -71,7 +71,7 @@ class Assistant:
         intent: Intent = self.router.classify(text)
 
         handlers = {
-            "greeting":   self._handle_greeting,
+            "greeting":   self._handle_chat,
             "help":       self._handle_help,
             "time":       self._handle_time,
             "date":       self._handle_date,

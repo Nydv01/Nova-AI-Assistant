@@ -47,7 +47,7 @@ class AIChatAPI:
             })
 
         try:
-            url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={self.api_key}"
+            url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={self.api_key}"
             resp = requests.post(
                 url,
                 headers={"content-type": "application/json"},
@@ -104,7 +104,7 @@ class AIChatAPI:
             with open(image_path, "rb") as image_file:
                 base64_image = base64.b64encode(image_file.read()).decode("utf-8")
 
-            url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={self.api_key}"
+            url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={self.api_key}"
             
             # Construct multimodal payload
             payload = {
