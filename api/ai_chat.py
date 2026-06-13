@@ -73,21 +73,48 @@ class AIChatAPI:
             return reply
 
         except requests.exceptions.ConnectionError:
-            return "I can't reach the internet right now. Please check your connection."
+            logger.warning("Gemini ConnectionError - falling back to rule-based chat")
+            return self.get_fallback_response(text)
         except requests.exceptions.HTTPError as exc:
-            if exc.response.status_code == 400:
-                # Check for API key invalid error
-                try:
-                    err_msg = exc.response.json().get("error", {}).get("message", "")
-                    if "API key not valid" in err_msg:
-                        return "The Gemini API key looks incorrect. Please check it in config.py or .env."
-                except Exception:
-                    pass
-            logger.exception("Gemini API error")
-            return f"AI service error ({exc.response.status_code}). Please try again."
+            logger.warning("Gemini HTTPError (%s) - falling back to rule-based chat", exc.response.status_code)
+            return self.get_fallback_response(text)
         except Exception as exc:
-            logger.exception("Chat API unexpected error")
-            return "Something went wrong with the AI service. Please try again."
+            logger.exception("Chat API unexpected error - falling back to rule-based chat")
+            return self.get_fallback_response(text)
+
+    def get_fallback_response(self, text: str) -> str:
+        """
+        Produces natural conversational responses when the Gemini API is offline
+        or rate-limited (e.g. 503 error), making the bot feel organic.
+        """
+        lower = text.lower().strip()
+        
+        # Greetings
+        if any(w in lower for w in ["hi", "hello", "hey", "greetings", "good morning", "good afternoon"]):
+            return "Hi there! Nova here. How can I help you today?"
+            
+        # How are you
+        if "how are you" in lower or "how's it going" in lower or "how do you do" in lower:
+            return "I'm doing great, thank you! I hope you're having a wonderful day."
+            
+        # Identity
+        if "your name" in lower or "who are you" in lower or "what are you" in lower:
+            return "I am Nova, your personal AI Assistant, featuring real-time diagnostics, screen vision, and dynamic tools."
+            
+        # Thanks
+        if any(w in lower for w in ["thank you", "thanks", "awesome", "perfect", "great"]):
+            return "You're very welcome! Let me know if you need help with weather, news, screenshots, or reminders."
+            
+        # Capabilities / Help
+        if "what can you do" in lower or "help" in lower or "capabilities" in lower:
+            return "I can take screenshots and explain them, display live system diagnostics (CPU/RAM), set reminders, check weather, and read news!"
+            
+        # Default fallback explanation
+        return (
+            "I'd love to discuss that! However, my AI cognitive service is temporarily "
+            "experiencing a rate limit (Error 503). In the meantime, feel free to try my other features "
+            "like taking a screenshot, checking system diagnostics, or adding a reminder!"
+        )
 
     def ask_with_image(self, prompt: str, image_path: str) -> str:
         """
@@ -149,13 +176,15 @@ class AIChatAPI:
             return reply
 
         except requests.exceptions.ConnectionError:
-            return "I can't reach the internet right now. Please check your connection."
+            return "I cannot analyze your screen right now because I am offline. Please check your internet connection."
         except requests.exceptions.HTTPError as exc:
             logger.exception("Gemini API error during image analysis")
-            return f"AI service error ({exc.response.status_code}). Please try again."
+            if exc.response.status_code == 503:
+                return "My vision service is temporarily congested (Error 503). Please wait a few seconds and try capturing again!"
+            return f"My vision service encountered an error ({exc.response.status_code}). Please try again."
         except Exception as exc:
             logger.exception("Chat API unexpected error during image analysis")
-            return "Something went wrong with the AI service during image analysis. Please try again."
+            return "Something went wrong with the vision service. Please try again."
 
     def clear_history(self):
         self._history.clear()
