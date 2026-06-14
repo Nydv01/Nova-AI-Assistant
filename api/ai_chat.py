@@ -23,11 +23,13 @@ class AIChatAPI:
         self.api_key = api_key
         self._history: list[dict] = []   # rolling conversation context
 
-    def ask(self, text: str) -> str:
+    def ask(self, text: str, model_source: str = "gemini", model: str = "llama3") -> str:
         """
-        Send a message to Google Gemini and return the reply.
-        Falls back to a polite placeholder if no key is configured.
+        Send a message to Gemini or local Ollama and return the reply.
         """
+        if model_source == "ollama":
+            return self.ask_ollama(text, model=model)
+
         if not self.api_key or self.api_key.startswith("YOUR_"):
             return (
                 "I'd be happy to chat! For open-ended conversations, "
@@ -81,6 +83,50 @@ class AIChatAPI:
         except Exception as exc:
             logger.exception("Chat API unexpected error - falling back to rule-based chat")
             return self.get_fallback_response(text)
+
+    def ask_ollama(self, text: str, model: str = "llama3") -> str:
+        """
+        Send a message to local Ollama and return the reply.
+        """
+        self._history.append({"role": "user", "content": text})
+        
+        # Roll history format: user and assistant roles mapped to ollama format
+        messages = [{"role": "system", "content": SYSTEM_PROMPT}]
+        for msg in self._history[-10:]:
+            messages.append({"role": msg["role"], "content": msg["content"]})
+            
+        try:
+            resp = requests.post(
+                "http://localhost:11434/api/chat",
+                json={
+                    "model": model,
+                    "messages": messages,
+                    "stream": False
+                },
+                timeout=15
+            )
+            resp.raise_for_status()
+            resp_data = resp.json()
+            reply = resp_data["message"]["content"].strip()
+            self._history.append({"role": "assistant", "content": reply})
+            return reply
+        except Exception as exc:
+            logger.exception("Ollama Chat API error")
+            return (
+                f"Ollama service error: {exc}. "
+                f"Please make sure Ollama is running locally and model '{model}' is pulled/installed."
+            )
+
+    def check_ollama_status(self) -> dict:
+        try:
+            resp = requests.get("http://localhost:11434/api/tags", timeout=3)
+            if resp.status_code == 200:
+                data = resp.json()
+                models = [m["name"] for m in data.get("models", [])]
+                return {"status": "online", "models": models}
+            return {"status": "offline", "error": f"HTTP {resp.status_code}"}
+        except Exception as e:
+            return {"status": "offline", "error": str(e)}
 
     def get_fallback_response(self, text: str) -> str:
         """

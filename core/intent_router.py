@@ -18,6 +18,7 @@ class Intent:
     reminder_msg: Optional[str] = None
     reminder_time: Optional[str] = None
     news_category: str = "general"
+    media_query: Optional[str] = None  # extracted for media
     raw_text: str = ""
 
 
@@ -51,6 +52,8 @@ class IntentRouter:
             intent.reminder_msg, intent.reminder_time = self._extract_reminder(lower)
         elif intent.name == "news":
             intent.news_category = self._extract_news_category(lower)
+        elif intent.name in ("media_youtube", "media_spotify"):
+            intent.media_query = self._extract_media_query(lower, intent.name)
 
         logger.debug("Intent: %s | text=%r", intent.name, text[:60])
         return intent
@@ -58,6 +61,16 @@ class IntentRouter:
     # ------------------------------------------------------------------
     # Entity extractors
     # ------------------------------------------------------------------
+
+    def _extract_media_query(self, text: str, name: str) -> Optional[str]:
+        for pattern, handler in INTENT_PATTERNS:
+            if handler == name:
+                m = re.search(pattern, text)
+                if m:
+                    for g in m.groups():
+                        if g is not None and g.strip():
+                            return g.strip()
+        return None
 
     def _extract_city(self, text: str) -> str:
         from config import DEFAULT_CITY

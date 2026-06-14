@@ -28,14 +28,22 @@ def index():
 def api_chat():
     data = request.json or {}
     text = data.get("text", "").strip()
+    model_source = data.get("model_source", "gemini").strip()
+    ollama_model = data.get("ollama_model", "llama3").strip()
     if not text:
         return jsonify({"error": "Empty message"}), 400
 
-    display, spoken = assistant.handle(text)
+    display, spoken = assistant.handle(text, model_source=model_source, ollama_model=ollama_model)
     return jsonify({
         "display": display,
         "spoken": spoken
     })
+
+
+@app.route("/api/ollama/status", methods=["GET"])
+def api_ollama_status():
+    status_info = assistant.chat.check_ollama_status()
+    return jsonify(status_info)
 
 
 @app.route("/api/weather", methods=["GET"])

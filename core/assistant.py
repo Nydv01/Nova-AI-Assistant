@@ -60,7 +60,7 @@ class Assistant:
     # Public
     # ------------------------------------------------------------------
 
-    def handle(self, text: str) -> tuple[str, str]:
+    def handle(self, text: str, model_source: str = "gemini", ollama_model: str = "llama3") -> tuple[str, str]:
         """
         Process user input.
 
@@ -71,21 +71,25 @@ class Assistant:
         intent: Intent = self.router.classify(text)
 
         handlers = {
-            "greeting":   self._handle_chat,
-            "help":       self._handle_help,
-            "time":       self._handle_time,
-            "date":       self._handle_date,
-            "joke":       self._handle_joke,
-            "weather":    self._handle_weather,
-            "news":       self._handle_news,
-            "reminder":   self._handle_reminder,
-            "screenshot": self._handle_screenshot,
-            "stats":      self._handle_stats,
-            "chat":       self._handle_chat,
+            "greeting":      self._handle_chat,
+            "help":          self._handle_help,
+            "time":          self._handle_time,
+            "date":          self._handle_date,
+            "joke":          self._handle_joke,
+            "weather":       self._handle_weather,
+            "news":          self._handle_news,
+            "reminder":      self._handle_reminder,
+            "screenshot":    self._handle_screenshot,
+            "stats":         self._handle_stats,
+            "media_youtube": self._handle_media_youtube,
+            "media_spotify": self._handle_media_spotify,
+            "chat":          self._handle_chat,
         }
 
         handler = handlers.get(intent.name, self._handle_chat)
         try:
+            if handler == self._handle_chat:
+                return self._handle_chat(intent, model_source, ollama_model)
             return handler(intent)
         except Exception as exc:
             logger.exception("Handler error for intent '%s'", intent.name)
@@ -165,8 +169,8 @@ class Assistant:
         spoken = f"Got it! I've set a reminder for: {reminder.message}, at {time_label}."
         return display, spoken
 
-    def _handle_chat(self, intent: Intent):
-        reply = self.chat.ask(intent.raw_text)
+    def _handle_chat(self, intent: Intent, model_source: str = "gemini", ollama_model: str = "llama3"):
+        reply = self.chat.ask(intent.raw_text, model_source=model_source, model=ollama_model)
         return reply, reply
 
     def _handle_screenshot(self, intent: Intent):
@@ -237,3 +241,21 @@ class Assistant:
             logger.exception("Failed to collect system metrics")
             err_msg = f"Failed to read system metrics: {e}"
             return err_msg, err_msg
+
+    def _handle_media_youtube(self, intent: Intent):
+        import urllib.parse
+        import webbrowser
+        q = intent.media_query or "synthwave"
+        url = f"https://www.youtube.com/results?search_query={urllib.parse.quote(q)}"
+        webbrowser.open(url)
+        msg = f"Opening YouTube search for: {q}"
+        return msg, msg
+
+    def _handle_media_spotify(self, intent: Intent):
+        import urllib.parse
+        import webbrowser
+        q = intent.media_query or "synthwave"
+        url = f"https://open.spotify.com/search/{urllib.parse.quote(q)}"
+        webbrowser.open(url)
+        msg = f"Opening Spotify search for: {q}"
+        return msg, msg

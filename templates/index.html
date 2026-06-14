@@ -658,6 +658,25 @@
       color: #FFF;
       border-color: var(--accent);
     }
+
+    /* Toggle switch slider */
+    .switch input:checked + .slider {
+      background-color: var(--accent);
+    }
+    .switch .slider:before {
+      position: absolute;
+      content: "";
+      height: 16px;
+      width: 16px;
+      left: 3px;
+      bottom: 3px;
+      background-color: white;
+      transition: .4s;
+      border-radius: 50%;
+    }
+    .switch input:checked + .slider:before {
+      transform: translateX(22px);
+    }
   </style>
 </head>
 <body>
@@ -696,7 +715,12 @@
       
       <!-- Chat Panel -->
       <div class="panel active" id="panel-chat">
-        <div class="chat-container" id="chat-scroller">
+        <!-- Search & Export Header -->
+        <div style="display: flex; gap: 12px; margin-bottom: 16px; align-items: center;">
+          <input type="text" id="chat-search" class="text-input" placeholder="🔍 Search chat history..." oninput="filterChatHistory()" style="padding: 8px 16px; border-radius: 12px;">
+          <button class="action-btn" onclick="exportChatHistory()" style="padding: 8px 16px; border-radius: 12px; font-weight: 600; white-space: nowrap;">📥 Export Chat</button>
+        </div>
+        <div class="chat-container" id="chat-scroller" style="height: calc(100vh - 275px);">
           <!-- Welcome Bubble -->
           <div class="chat-bubble assistant">
             <div>
@@ -809,6 +833,44 @@
       <!-- Settings Panel -->
       <div class="panel" id="panel-settings">
         <div class="card">
+          <h2 class="card-title">AI Engine Settings</h2>
+          <div class="diagnostics-list">
+            <div class="diagnostic-row" style="display:flex; flex-direction:column; align-items:flex-start; gap:8px; border-bottom: none;">
+              <span class="diagnostic-title">AI Model Engine</span>
+              <div style="display:flex; gap:16px; width:100%;">
+                <label style="cursor:pointer; display:flex; align-items:center; gap:6px;">
+                  <input type="radio" name="model_source" value="gemini" checked onchange="handleModelSourceChange()"> Gemini Cloud AI
+                </label>
+                <label style="cursor:pointer; display:flex; align-items:center; gap:6px;">
+                  <input type="radio" name="model_source" value="ollama" onchange="handleModelSourceChange()"> Ollama Local LLM
+                </label>
+              </div>
+            </div>
+            <div id="ollama-config-row" class="diagnostic-row" style="display: none; flex-direction: column; align-items: flex-start; gap: 8px; border-bottom: none;">
+              <span class="diagnostic-title">Ollama Model Selection</span>
+              <div style="display: flex; gap: 10px; width: 100%; align-items: center;">
+                <select id="ollama-model-select" class="form-input" style="flex: 1; padding: 6px 12px; background: var(--bg); border: 1px solid var(--card-border); color: #fff; border-radius: 8px;"></select>
+                <button class="action-btn" onclick="checkOllamaStatus(true)" style="padding: 6px 12px;">🔄 Refresh</button>
+              </div>
+              <span id="ollama-status-text" style="font-size: 12px; color: var(--text-secondary);"></span>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <h2 class="card-title">Voice & Wake-Word Settings</h2>
+          <div class="diagnostics-list">
+            <div class="diagnostic-row" style="display:flex; align-items:center; justify-content:space-between; width:100%; border-bottom: none;">
+              <span class="diagnostic-title">Continuous Wake-Word ("Hey Nova")</span>
+              <label class="switch" style="position: relative; display: inline-block; width: 44px; height: 22px;">
+                <input type="checkbox" id="wakeword-toggle" onchange="toggleWakeWordListener()" style="opacity: 0; width: 0; height: 0;">
+                <span class="slider" style="position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: var(--text-muted); transition: .4s; border-radius: 22px;"></span>
+              </label>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
           <h2 class="card-title">General Preferences</h2>
           <div class="diagnostics-list">
             <div class="diagnostic-row">
@@ -899,9 +961,17 @@
       };
       
       recognition.onend = () => {
-        if (isSpeechActive) {
-          isSpeechActive = false;
-          setUIState('ready', 'Ready');
+        isSpeechActive = false;
+        setUIState('ready', 'Ready');
+        
+        // Restart wake word if toggle is active
+        const toggle = document.getElementById('wakeword-toggle');
+        if (toggle && toggle.checked && !isWakeWordActive) {
+          setTimeout(() => {
+            if (wakeWordRecognition && !isSpeechActive && visualState !== 'listening' && visualState !== 'processing') {
+              try { wakeWordRecognition.start(); } catch(e){}
+            }
+          }, 300);
         }
       };
       
@@ -915,6 +985,16 @@
         console.error('Speech recognition error:', event.error);
         setUIState('ready', 'Ready');
         isSpeechActive = false;
+        
+        // Restart wake word if toggle is active
+        const toggle = document.getElementById('wakeword-toggle');
+        if (toggle && toggle.checked && !isWakeWordActive) {
+          setTimeout(() => {
+            if (wakeWordRecognition && !isSpeechActive && visualState !== 'listening' && visualState !== 'processing') {
+              try { wakeWordRecognition.start(); } catch(e){}
+            }
+          }, 300);
+        }
       };
     }
 
@@ -1058,10 +1138,19 @@
       setUIState('processing', 'Thinking...');
       
       try {
+        // Read model source from DOM state
+        const selectedModelSource = document.querySelector('input[name="model_source"]:checked')?.value || 'gemini';
+        const select = document.getElementById('ollama-model-select');
+        const selectedOllamaModel = select ? select.value : 'llama3';
+
         const resp = await fetch('/api/chat', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ text })
+          body: JSON.stringify({ 
+            text,
+            model_source: selectedModelSource,
+            ollama_model: selectedOllamaModel
+          })
         });
         const data = await resp.json();
         
@@ -1117,10 +1206,30 @@
       
       utterance.onend = () => {
         setUIState('ready', 'Ready');
+        
+        // Restart wake word if toggle is active
+        const toggle = document.getElementById('wakeword-toggle');
+        if (toggle && toggle.checked && !isWakeWordActive) {
+          setTimeout(() => {
+            if (wakeWordRecognition && !isSpeechActive && visualState !== 'listening' && visualState !== 'processing') {
+              try { wakeWordRecognition.start(); } catch(e){}
+            }
+          }, 300);
+        }
       };
       
       utterance.onerror = () => {
         setUIState('ready', 'Ready');
+        
+        // Restart wake word if toggle is active
+        const toggle = document.getElementById('wakeword-toggle');
+        if (toggle && toggle.checked && !isWakeWordActive) {
+          setTimeout(() => {
+            if (wakeWordRecognition && !isSpeechActive && visualState !== 'listening' && visualState !== 'processing') {
+              try { wakeWordRecognition.start(); } catch(e){}
+            }
+          }, 300);
+        }
       };
       
       window.speechSynthesis.speak(utterance);
@@ -1361,6 +1470,239 @@
         });
       } catch (err) {
         container.innerHTML = '<div style="font-size:14px;color:var(--red);padding:12px;">Failed to load headlines.</div>';
+      }
+    }
+
+    // --- Search & Export ---
+    function filterChatHistory() {
+      const query = document.getElementById('chat-search').value.toLowerCase().trim();
+      const bubbles = document.querySelectorAll('.chat-bubble');
+      bubbles.forEach(bubble => {
+        const text = bubble.innerText.toLowerCase();
+        if (text.includes(query)) {
+          bubble.style.display = 'flex';
+        } else {
+          bubble.style.display = 'none';
+        }
+      });
+    }
+
+    function exportChatHistory() {
+      const bubbles = document.querySelectorAll('.chat-bubble');
+      if (bubbles.length === 0) {
+        alert("No conversation history to export.");
+        return;
+      }
+      let output = `Nova AI Assistant Conversation History - ${new Date().toLocaleDateString()}\n`;
+      output += `========================================================================\n\n`;
+      
+      bubbles.forEach(bubble => {
+        const isUser = bubble.classList.contains('user');
+        const role = isUser ? 'User' : 'Nova Assistant';
+        const timeEl = bubble.querySelector('.chat-time');
+        const time = timeEl ? timeEl.innerText : '';
+        const contentEl = bubble.firstElementChild;
+        const text = contentEl ? contentEl.innerText : bubble.innerText.replace(time, '').trim();
+        
+        output += `[${time}] ${role}:\n${text}\n\n`;
+      });
+      
+      const blob = new Blob([output], { type: 'text/plain;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `nova-chat-history-${new Date().toISOString().slice(0,10)}.txt`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    }
+
+    // --- AI Engine Selector Settings ---
+    let modelSource = 'gemini';
+    let ollamaModel = 'llama3';
+
+    function handleModelSourceChange() {
+      const selected = document.querySelector('input[name="model_source"]:checked').value;
+      modelSource = selected;
+      const ollamaConfig = document.getElementById('ollama-config-row');
+      if (modelSource === 'ollama') {
+        ollamaConfig.style.display = 'flex';
+        checkOllamaStatus(true);
+      } else {
+        ollamaConfig.style.display = 'none';
+      }
+    }
+
+    async function checkOllamaStatus(showFeedback = false) {
+      const statusText = document.getElementById('ollama-status-text');
+      const select = document.getElementById('ollama-model-select');
+      
+      statusText.innerText = 'Checking Ollama status...';
+      statusText.style.color = 'var(--text-secondary)';
+      
+      try {
+        const resp = await fetch('/api/ollama/status');
+        const data = await resp.json();
+        
+        if (data.status === 'online') {
+          statusText.innerText = 'Ollama is Online';
+          statusText.style.color = 'var(--green)';
+          
+          // Populate select
+          select.innerHTML = '';
+          if (data.models && data.models.length > 0) {
+            data.models.forEach(model => {
+              const opt = document.createElement('option');
+              opt.value = model;
+              opt.innerText = model;
+              select.appendChild(opt);
+            });
+            ollamaModel = select.value;
+          } else {
+            const opt = document.createElement('option');
+            opt.value = 'llama3';
+            opt.innerText = 'llama3 (not detected)';
+            select.appendChild(opt);
+            statusText.innerText = 'Ollama Online, but no local models found. Run "ollama pull llama3" in terminal.';
+            statusText.style.color = 'var(--orange)';
+          }
+        } else {
+          statusText.innerText = `Ollama Offline: ${data.error || 'Connection refused'}. Start Ollama app.`;
+          statusText.style.color = 'var(--red)';
+          select.innerHTML = '<option value="llama3">llama3 (offline)</option>';
+        }
+      } catch (err) {
+        statusText.innerText = 'Failed to fetch Ollama status.';
+        statusText.style.color = 'var(--red)';
+      }
+    }
+
+    // Set selection handler
+    document.getElementById('ollama-model-select')?.addEventListener('change', (e) => {
+      ollamaModel = e.target.value;
+    });
+
+    // --- Continuous Wake-Word ("Hey Nova") ---
+    let wakeWordRecognition = null;
+    let isWakeWordActive = false;
+
+    function initWakeWord() {
+      if (!SpeechRecognition) return;
+      wakeWordRecognition = new SpeechRecognition();
+      wakeWordRecognition.continuous = true;
+      wakeWordRecognition.interimResults = true;
+      wakeWordRecognition.lang = 'en-US';
+
+      wakeWordRecognition.onstart = () => {
+        console.log("Wake-word recognition started");
+        isWakeWordActive = true;
+      };
+
+      wakeWordRecognition.onend = () => {
+        isWakeWordActive = false;
+        console.log("Wake-word recognition ended");
+        const toggle = document.getElementById('wakeword-toggle');
+        if (toggle && toggle.checked && !isSpeechActive && visualState !== 'listening' && visualState !== 'processing') {
+          try {
+            wakeWordRecognition.start();
+          } catch(e) {
+            console.error("Error restarting wake-word recognition:", e);
+          }
+        }
+      };
+
+      wakeWordRecognition.onresult = (event) => {
+        const lastResultIndex = event.resultIndex;
+        const transcript = event.results[lastResultIndex][0].transcript.toLowerCase();
+        if (transcript.includes('hey nova') || transcript.includes('nova')) {
+          console.log("Wake-word triggered!");
+          triggerWakeWordActivation();
+        }
+      };
+
+      wakeWordRecognition.onerror = (event) => {
+        console.error("Wake-word recognition error:", event.error);
+        if (event.error === 'not-allowed') {
+          alert('Microphone permission blocked. Please allow mic access in browser.');
+          const toggle = document.getElementById('wakeword-toggle');
+          if (toggle) toggle.checked = false;
+        }
+      };
+    }
+
+    function triggerWakeWordActivation() {
+      if (wakeWordRecognition) {
+        wakeWordRecognition.stop();
+      }
+      playSynthChime();
+      setTimeout(() => {
+        if (!isSpeechActive) {
+          toggleSpeech(); // Starts regular recording/listening
+        }
+      }, 350);
+    }
+
+    function playSynthChime() {
+      try {
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        const now = audioCtx.currentTime;
+        
+        // Note 1 (E5: 659.25Hz)
+        const osc1 = audioCtx.createOscillator();
+        const gain1 = audioCtx.createGain();
+        osc1.type = 'sine';
+        osc1.frequency.setValueAtTime(659.25, now);
+        gain1.gain.setValueAtTime(0.15, now);
+        gain1.gain.exponentialRampToValueAtTime(0.01, now + 0.15);
+        osc1.connect(gain1);
+        gain1.connect(audioCtx.destination);
+        osc1.start(now);
+        osc1.stop(now + 0.15);
+        
+        // Note 2 (A5: 880Hz)
+        const osc2 = audioCtx.createOscillator();
+        const gain2 = audioCtx.createGain();
+        osc2.type = 'sine';
+        osc2.frequency.setValueAtTime(880, now + 0.1);
+        gain2.gain.setValueAtTime(0.15, now + 0.1);
+        gain2.gain.exponentialRampToValueAtTime(0.01, now + 0.35);
+        osc2.connect(gain2);
+        gain2.connect(audioCtx.destination);
+        osc2.start(now + 0.1);
+        osc2.stop(now + 0.35);
+      } catch (e) {
+        console.error("Audio Context beep failed", e);
+      }
+    }
+
+    function toggleWakeWordListener() {
+      const toggle = document.getElementById('wakeword-toggle');
+      if (!SpeechRecognition) {
+        alert('Web Speech API is not supported in this browser.');
+        if (toggle) toggle.checked = false;
+        return;
+      }
+      
+      if (!wakeWordRecognition) {
+        initWakeWord();
+      }
+      
+      if (toggle.checked) {
+        if (isSpeechActive) {
+          recognition.stop();
+        }
+        try {
+          wakeWordRecognition.start();
+          addBubble("Continuous listening activated. Try saying 'Hey Nova'!", 'assistant');
+        } catch(e) {
+          console.error("Failed to start wake word:", e);
+        }
+      } else {
+        if (wakeWordRecognition) {
+          wakeWordRecognition.stop();
+        }
+        addBubble("Continuous listening deactivated.", 'assistant');
       }
     }
   </script>

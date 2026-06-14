@@ -55,6 +55,8 @@ NEWS_CATEGORIES = ["general", "technology", "sports", "business", "science", "he
 
 # Simple intent patterns (regex → handler name)
 INTENT_PATTERNS = [
+    (r"play\s+(.+?)\s+on\s+youtube|youtube\s+play\s+(.+)", "media_youtube"),
+    (r"search\s+(.+?)\s+on\s+spotify|spotify\s+search\s+(.+)", "media_spotify"),
     (r"screenshot|screen shot|capture.*screen", "screenshot"),
     (r"system stats|cpu usage|ram usage|cpu|ram|battery", "stats"),
     (r"remind|reminder",            "reminder"),
